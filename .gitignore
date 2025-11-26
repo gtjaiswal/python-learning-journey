@@ -1,0 +1,22 @@
+# Virtual envs
+.venv/
+venv/
+env/
+
+# PyCharm / JetBrains
+.idea/
+*.iml
+
+# Python cache / artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Test / tooling
+.pytest_cache/
+
+# Data / local artifacts
+*.csv
+
+# macOS
+.DS_Store
