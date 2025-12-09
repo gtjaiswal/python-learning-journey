@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asyncio + Executors: Non-Blocking Explained</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        h1 {
+            color: white;
+            text-align: center;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .section {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        
+        h2 {
+            color: #2c3e50;
+            border-left: 6px solid #3498db;
+            padding-left: 15px;
+        }
+        
+        .code-block {
+            background: #282c34;
+            color: #abb2bf;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Consolas', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+            margin: 20px 0;
+        }
+        
+        .keyword { color: #c678dd; }
+        .function { color: #61afef; }
+        .string { color: #98c379; }
+        .comment { color: #5c6370; }
+        
+        .timeline {
+            margin: 30px 0;
+        }
+        
+        .timeline-row {
+            display: grid;
+            grid-template-columns: 100px 1fr;
+            margin-bottom: 3px;
+            align-items: start;
+        }
+        
+        .time {
+            font-weight: bold;
+            color: #e74c3c;
+            padding: 10px;
+            text-align: right;
+            font-size: 13px;
+        }
+        
+        .events {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .event {
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-size: 13px;
+            flex: 1;
+            min-width: 180px;
+            border-left: 4px solid;
+        }
+        
+        .event-loop {
+            background: #ebf5fb;
+            border-color: #3498db;
+            color: #2c3e50;
+        }
+        
+        .event-thread1 {
+            background: #e8f8f5;
+            border-color: #27ae60;
+            color: #2c3e50;
+        }
+        
+        .event-thread2 {
+            background: #d5f4e6;
+            border-color: #27ae60;
+            color: #2c3e50;
+        }
+        
+        .event-process1 {
+            background: #fef5e7;
+            border-color: #f39c12;
+            color: #2c3e50;
+        }
+        
+        .event-process2 {
+            background: #fdebd0;
+            border-color: #f39c12;
+            color: #2c3e50;
+        }
+        
+        .event-idle {
+            background: #ecf0f1;
+            border-color: #95a5a6;
+            color: #7f8c8d;
+            font-style: italic;
+        }
+        
+        .highlight {
+            background: #fff3cd;
+            border-left: 5px solid #ffc107;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        
+        .highlight strong {
+            color: #856404;
+            font-size: 1.2em;
+        }
+        
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin: 30px 0;
+        }
+        
+        .comparison-box {
+            padding: 25px;
+            border-radius: 10px;
+            border: 3px solid;
+        }
+        
+        .bad-box {
+            background: #ffe5e5;
+            border-color: #e74c3c;
+        }
+        
+        .good-box {
+            background: #e8f8f5;
+            border-color: #27ae60;
+        }
+        
+        .legend {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            padding: 15px;
+            background: #ecf0f1;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .legend-box {
+            width: 40px;
+            height: 25px;
+            border-radius: 5px;
+            border: 2px solid;
+        }
+        
+        .diagram-container {
+            background: #f8f9fa;
+            border: 3px solid #3498db;
+            border-radius: 10px;
+            padding: 30px;
+            margin: 25px 0;
+        }
+        
+        .architecture-grid {
+            display: grid;
+            grid-template-columns: 200px 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .main-column {
+            background: #ebf5fb;
+            border: 3px solid #3498db;
+            border-radius: 8px;
+            padding: 20px;
+        }
+        
+        .workers-column {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .worker-box {
+            background: #e8f8f5;
+            border: 2px solid #27ae60;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+        }
+        
+        .process-worker-box {
+            background: #fef5e7;
+            border: 2px solid #f39c12;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔓 Executors DON'T Block the Event Loop</h1>
+    
+    <!-- MISCONCEPTION -->
+    <div class="section">
+        <h2>❌ Common Misconception</h2>
+        
+        <div class="bad-box comparison-box">
+            <h3 style="margin-top: 0; color: #e74c3c;">WRONG Understanding:</h3>
+            <p style="font-size: 1.1em;">"When async task runs blocking code via executor, the event loop waits/blocks until that executor finishes"</p>
+            <ul style="font-size: 1.05em;">
+                <li>Event loop stops and waits</li>
+                <li>Other async tasks can't run</li>
+                <li>Everything becomes sequential again</li>
+                <li>No benefit from using executors</li>
+            </ul>
+        </div>
+        
+        <div class="good-box comparison-box" style="margin-top: 20px;">
+            <h3 style="margin-top: 0; color: #27ae60;">✅ CORRECT Understanding:</h3>
+            <p style="font-size: 1.1em;">"When async task submits work to executor, it yields control immediately. Event loop continues running other tasks while executor works in background"</p>
+            <ul style="font-size: 1.05em;">
+                <li>Event loop stays FREE and responsive</li>
+                <li>Other async tasks continue running</li>
+                <li>True concurrency achieved</li>
+                <li>Executors work in parallel with event loop</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- THE CODE -->
+    <div class="section">
+        <h2>📝 Example Code to Analyze</h2>
+        
+        <div class="code-block">
+<span class="keyword">import</span> asyncio
+<span class="keyword">import</span> time
+<span class="keyword">from</span> concurrent.futures <span class="keyword">import</span> ThreadPoolExecutor
+
+<span class="keyword">def</span> <span class="function">blocking_io</span>(name, duration):
+    <span class="comment"># This is blocking/synchronous code</span>
+    <span class="function">print</span>(<span class="string">f"[{name}] Starting blocking work for {duration}s"</span>)
+    time.<span class="function">sleep</span>(duration)  <span class="comment"># Blocks the thread!</span>
+    <span class="function">print</span>(<span class="string">f"[{name}] Finished!"</span>)
+    <span class="keyword">return</span> <span class="string">f"Result from {name}"</span>
+
+<span class="keyword">async def</span> <span class="function">async_task_1</span>():
+    <span class="function">print</span>(<span class="string">"Task 1: Starting"</span>)
+    
+    <span class="comment"># Submit blocking work to thread pool</span>
+    result = <span class="keyword">await</span> asyncio.<span class="function">to_thread</span>(blocking_io, <span class="string">"Thread-1"</span>, 3)
+    
+    <span class="function">print</span>(<span class="string">f"Task 1: Got result - {result}"</span>)
+    <span class="keyword">return</span> result
+
+<span class="keyword">async def</span> <span class="function">async_task_2</span>():
+    <span class="function">print</span>(<span class="string">"Task 2: Starting"</span>)
+    
+    <span class="comment"># Submit blocking work to thread pool</span>
+    result = <span class="keyword">await</span> asyncio.<span class="function">to_thread</span>(blocking_io, <span class="string">"Thread-2"</span>, 2)
+    
+    <span class="function">print</span>(<span class="string">f"Task 2: Got result - {result}"</span>)
+    <span class="keyword">return</span> result
+
+<span class="keyword">async def</span> <span class="function">async_task_3</span>():
+    <span class="function">print</span>(<span class="string">"Task 3: Starting (pure async)"</span>)
+    <span class="keyword">await</span> asyncio.<span class="function">sleep</span>(1)  <span class="comment"># Non-blocking sleep</span>
+    <span class="function">print</span>(<span class="string">"Task 3: Finished!"</span>)
+
+<span class="keyword">async def</span> <span class="function">main</span>():
+    <span class="comment"># Create all tasks - they start IMMEDIATELY</span>
+    tasks = [
+        asyncio.<span class="function">create_task</span>(async_task_1()),
+        asyncio.<span class="function">create_task</span>(async_task_2()),
+        asyncio.<span class="function">create_task</span>(async_task_3())
+    ]
+    
+    <span class="comment"># Wait for all to complete</span>
+    results = <span class="keyword">await</span> asyncio.<span class="function">gather</span>(*tasks)
+    <span class="function">print</span>(<span class="string">f"All done! Results: {results}"</span>)
+
+asyncio.<span class="function">run</span>(main())
+        </div>
+    </div>
+
+    <!-- DETAILED TIMELINE -->
+    <div class="section">
+        <h2>⏱️ Detailed Execution Timeline</h2>
+        
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-box event-loop"></div>
+                <span><strong>Event Loop</strong> (Main Thread)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-box event-thread1"></div>
+                <span><strong>Thread 1</strong> (Pool Worker)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-box event-thread2"></div>
+                <span><strong>Thread 2</strong> (Pool Worker)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-box event-idle"></div>
+                <span>Idle / Sleeping</span>
+            </div>
+        </div>
+        
+        <div class="timeline">
+            <div class="timeline-row">
+                <div class="time">0.000s</div>
+                <div class="events">
+                    <div class="event event-loop"><strong>Event Loop:</strong> main() starts</div>
+                </div>
+            </div>
+            
+            <div class="timeline-row">
+                <div class="time">0.001s</div>
+                <div class="events">
+                    <div class="event event-loop"><strong>Event Loop:</strong> create_task(async_task_1()) - Task 1 scheduled</div>
+                </div>
+            </div>
+            
+            <div class="timeline-row">
+                <div class="time">0.002s</div>
+                <div class="events">
+                    <div class="event event-loop"><strong>Event Loop:</strong> create_task(async_task_2()) - Task 2 scheduled</div>
+                </div>
+            </div>
+            
+            <div class="timeline-row">
+                <div class="time">0.003s</div>
+                <div class="events">
+                    <div class="event event-loop"><strong>Event Loop:</strong> create_task(async_task_3()) - Task 3 scheduled</div>
+                </div>
+            </div>
+            
+            <div class="timeline-row">
+                <div class="time">0.004s</div>
+                <div class="events">
+                    <div class="event event-loop"><strong>Event Loop:</strong> await gather() - switch to Task 1</div>
+                </div>
+            </div>
+            
+            <div class="timeline-row">
+                <div class="time">0.005s</div>
+                <div class="events">
+                    <div class="event event-loop"><strong>Task 1:</strong> Prints "Task 1: Starting"</div>
+                </div>
+            </div>
+            
+            <div class="timeline-row">
+                <div class="time">0.010s</div>
+                <div class="events">
+                    <div class="event event-loop"><strong>Task 1:</strong> Calls to_thread() - submits to thread pool</div>
+                    <div class="event event-thread1"><strong>Thread 1:</strong> STARTS blocking_io("Thread-1", 3)</div>
+                </div>
+            </div>
+            
+            <div class="timeline-row">
+                <div class="time">0.011s</div>
+                <div class="events">
+                    <div class="event event-loop"><strong>Event Loop:</strong> Task 1 yielded, switch to Task 2 ⚡</div>
+                    <div class="event event-thread1"><strong>Thread 1:</strong> Prints "Starting blocking work"</div>
+                </div>
+            </div>
+            
+            <div class="timeline-row">
+                <div class="time">0.012s</div>
+                <div class="events">
+                    <div class="event event-loop"><strong>Task 2:</strong> Prints "Task 2: Starting"</div>
+                    <div class="event event-thread1"><strong>Thread 1:</strong> time.sleep(3) begins</div>
+                </div>
+            </div>
+            
+            <div class="timeline-row">
+                <div class="time">0.015s</div>
+                <div class="events">
+                    <div class="event event-loop"><strong>Task 2:</strong> Calls to_thread() - submits to thread pool</div>
+                    <div class="event event-thread1"><strong>Thread 1:</strong> sleeping...</div>
+                    <div class="event event-thread2"><strong>Thread 2:</strong> STARTS blocking_io("Thread-2", 2)</div>
+                </div>
+            </div>
+            
+            <div class="timeline-row">
+                <div class="time">0.016s</div>
+                <div class="events">
+                    <div class="event event-loop"><strong>Event Loop:</strong> Task 2 yielded, switch to Task 3 ⚡</div>
+                    <div class="event event-thread1"><strong>Thread 1:</strong> sleeping...</div>
+                    <div class="event event-thread2"><strong>Thread 2:</strong> Prints "Starting blocking work"</div>
+                </div>
+            </div>
+            
+            <div class="timeline-row">
+                <div class="time">0.017s</div>
+                <div class="events">
+                    <div class="event event-loop"><strong>Task 3:</strong> Prints "Task 3: Starting"</div>
+                    <div class="event event-thread1"><strong>Thread 1:</strong> sleeping...</div>
+                    <div class="event event-thread2"><strong>Thread 2:</strong> time.sleep(2) begins</div>
+                </div>
+            </div>
+            
+            <div class="timeline-row">
+                <div class="time">0.018s</div>
+                <div class="events">
+                    <div class="event event-loop"><strong>Task 3:</strong> await asyncio.sleep(1) - yields</div>
+                    <div class="event event-thread1"><strong>Thread 1:</strong> sleeping...</div>
+                    <div class="event event-thread2"><strong>Thread 2:</strong> sleeping...</div>
+                </div>
+            </div>
+            
+            <div class="timeline-row">
+                <div class="time">0.020s</div>
+                <div class="events">
+                    <div class="event event-idle"><strong>Event Loop:</strong> All tasks waiting, loop idle but ready ✓</div>
+                    <div class="event event-thread1"><strong>Thread 1:</strong> sleeping... (3s total)</div>
+                    <div class="event event-thread2"><strong>Thread 2:</strong> sleeping... (2s total)</div>
+                </div>
+            </div>
+            
+            <div class="timeline-row">
+                <div class="time">1.018s</div>
+                <div class="events">
+                    <div class="event event-loop"><strong>Task 3:</strong> Sleep done, prints "Task 3: Finished!" ✓</div>
+                    <div class="event event-thread1"><strong>Thread 1:</strong> still sleeping... (2s remaining)</div>
+                    <div class="event event-thread2"><strong>Thread 2:</strong> still sleeping... (1s remaining)</div>
+                </div>
+            </div>
+            
+            <div class="timeline-row">
+                <div class="time">1.019s</div>
+                <div class="events">
+                    <div class="event event-loop"><strong>Event Loop:</strong> Task 3 complete, waiting for Tasks 1 & 2</div>
+                    <div class="event event-thread1"><strong>Thread 1:</strong> still sleeping...</div>
+                    <div class="event event-thread2"><strong>Thread 2:</strong> still sleeping...</div>
+                </div>
+            </div>
+            
+            <div class="timeline-row">
+                <div class="time">2.015s</div>
+                <div class="events">
+                    <div class="event event-idle"><strong>Event Loop:</strong> Checking for completions...</div>
+                    <div class="event event-thread1"><strong>Thread 1:</strong> still sleeping... (1s remaining)</div>
+                    <div class="event event-thread2"><strong>Thread 2:</strong> Sleep done! Prints "Finished!" ✓</div>
+                </div>
+            </div>
+            
+            <div class="timeline-row">
+                <div class="time">2.016s</div>
+                <div class="events">
+                    <div class="event event-loop"><strong>Task 2:</strong> Resumes! Prints "Got result" ✓</div>
+                    <div class="event event-thread1"><strong>Thread 1:</strong> still sleeping...</div>
+                    <div class="event event-idle"><strong>Thread 2:</strong> Returns to pool (available)</div>
+                </div>
+            </div>
+            
+            <div class="timeline-row">
+                <div class="time">3.010s</div>
+                <div class="events">
+                    <div class="event event-idle"><strong>Event Loop:</strong> Checking for completions...</div>
+                    <div class="event event-thread1"><strong>Thread 1:</strong> Sleep done! Prints "Finished!" ✓</div>
+                </div>
+            </div>
+            
+            <div class="timeline-row">
+                <div class="time">3.011s</div>
+                <div class="events">
+                    <div class="event event-loop"><strong>Task 1:</strong> Resumes! Prints "Got result" ✓</div>
+                    <div class="event event-idle"><strong>Thread 1:</strong> Returns to pool (available)</div>
+                </div>
+            </div>
+            
+            <div class="timeline-row">
+                <div class="time">3.012s</div>
+                <div class="events">
+                    <div class="event event-loop"><strong>main():</strong> All tasks done! Prints results ✓</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="highlight">
+            <strong>⏱️ Total Time: ~3 seconds</strong><br><br>
+            • Task 1 (3s in thread) + Task 2 (2s in thread) + Task 3 (1s async) = Would be 6s if sequential<br>
+            • Actual time: ~3s (all running concurrently!)<br>
+            • Event loop was NEVER blocked - it switched between tasks freely ⚡
+        </div>
+    </div>
+
+    <!-- KEY INSIGHTS -->
+    <div class="section">
+        <h2>🔑 Key Insights</h2>
+        
+        <div class="diagram-container">
+            <h3>What Happens When await asyncio.to_thread() is Called</h3>
+            
+            <div style="background: #fff; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <div style="display: flex; align-items: center; gap: 20px; margin: 15px 0;">
+                    <div style="flex: 1; background: #ebf5fb; padding: 15px; border-radius: 8px; border: 2px solid #3498db;">
+                        <strong>Step 1: Async Task</strong><br>
+                        <code>await asyncio.to_thread(blocking_func)</code>
+                    </div>
+                    <div style="font-size: 2em; color: #3498db;">→</div>
+                    <div style="flex: 1; background: #e8f8f5; padding: 15px; border-radius: 8px; border: 2px solid #27ae60;">
+                        <strong>Step 2: Submit to Thread Pool</strong><br>
+                        Thread starts executing blocking_func
+                    </div>
+                </div>
+                
+                <div style="font-size: 2em; text-align: center; color: #e74c3c; margin: 20px 0;">
+                    ⚡ CRITICAL: Task IMMEDIATELY yields control here ⚡
+                </div>
+                
+                <div style="display: flex; align-items: center; gap: 20px; margin: 15px 0;">
+                    <div style="flex: 1; background: #ebf5fb; padding: 15px; border-radius: 8px; border: 2px solid #3498db;">
+                        <strong>Step 3: Event Loop</strong><br>
+                        Runs other ready tasks<br>
+                        <small>(Task is NOT blocking here!)</small>
+                    </div>
+                    <div style="font-size: 2em; color: #3498db;">⟷</div>
+                    <div style="flex: 1; background: #e8f8f5; padding: 15px; border-radius: 8px; border: 2px solid #27ae60;">
+                        <strong>Step 3: Thread</strong><br>
+                        Continues working in background<br>
+                        <small>(Independent from event loop)</small>
+                    </div>
+                </div>
+                
+                <div style="font-size: 2em; text-align: center; color: #27ae60; margin: 20px 0;">
+                    ⏰ Time passes... Both event loop and thread are active ⏰
+                </div>
+                
+                <div style="display: flex; align-items: center; gap: 20px; margin: 15px 0;">
+                    <div style="flex: 1; background: #e8f8f5; padding: 15px; border-radius: 8px; border: 2px solid #27ae60;">
+                        <strong>Step 4: Thread Finishes</strong><br>
+                        Result ready, notifies event loop
+                    </div>
+                    <div style="font-size: 2em; color: #3498db;">→</div>
+                    <div style="flex: 1; background: #ebf5fb; padding: 15px; border-radius: 8px; border: 2px solid #3498db;">
+                        <strong>Step 5: Task Resumes</strong><br>
+                        Gets result from thread, continues execution
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ARCHITECTURE -->
+    <div class="section">
+        <h2>🏗️ Architecture: Event Loop + Thread Pool</h2>
+        
+        <div class="architecture-grid">
+            <div class="main-column">
+                <h3 style="margin-top: 0; text-align: center;">🔄 Event Loop<br>(Main Thread)</h3>
+                <div style="background: white; padding: 15px; border-radius: 8px; margin: 10px 0;">
+                    <strong>Task 1</strong><br>
+                    Status: Waiting for Thread 1<br>
+                    <small>Not blocking! Just waiting.</small>
+                </div>
+                <div style="background: white; padding: 15px; border-radius: 8px; margin: 10px 0;">
+                    <strong>Task 2</strong><br>
+                    Status: Waiting for Thread 2<br>
+                    <small>Not blocking! Just waiting.</small>
+                </div>
+                <div style="background: white; padding: 15px; border-radius: 8px; margin: 10px 0;">
+                    <strong>Task 3</strong><br>
+                    Status: Running (pure async)<br>
+                    <small>✓ Actively executing!</small>
+                </div>
+                <div style="margin-top: 20px; padding: 15px; background: #d4edda; border-radius: 8px; border: 2px solid #28a745;">
+                    <strong>🎯 Event Loop is FREE</strong><br>
+                    Can switch between tasks, handle new events, etc.
+                </div>
+            </div>
+            
+            <div class="workers-column">
+                <h3 style="text-align: center;">🧵 Thread Pool Workers</h3>
+                <div class="worker-box">
+                    <strong>Thread 1</strong><br>
+                    Running: blocking_io("Thread-1", 3)<br>
+                    Status: time.sleep(3)<br>
+                    <small>🔥 Working independently</small>
+                </div>
+                <div class="worker-box">
+                    <strong>Thread 2</strong><br>
+                    Running: blocking_io("Thread-2", 2)<br>
+                    Status: time.sleep(2)<br>
+                    <small>🔥 Working independently</small>
+                </div>
+                <div class="worker-box">
+                    <strong>Thread 3</strong><br>
+                    Status: Idle (available)<br>
+                    <small>💤 Ready for work</small>
+                </div>
+                <div class="worker-box">
+                    <strong>Thread 4</strong><br>
+                    Status: Idle (available)<br>
+                    <small>💤 Ready for work</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="highlight">
+            <strong>🔓 The Magic:</strong><br><br>
+            • Event loop and thread pool are <strong>completely separate</strong><br>
+            • They run <strong>in parallel</strong> (different OS threads)<br>
+            • Event loop never waits for threads - it just checks "are they done yet?"<br>
+            • While threads work, event loop handles other tasks<br>
+            • This is TRUE concurrency!
+        </div>
+    </div>
+
+    <!-- COMPARISON WITH PROCESSES -->
+    <div class="section">
+        <h2>⚙️ Same Concept with ProcessPoolExecutor</h2>
+        
+        <div class="code-block">
+<span class="keyword">async def</span> <span class="function">cpu_task_1</span>():
+    loop = asyncio.<span class="function">get_running_loop</span>()
+    <span class="keyword">with</span> ProcessPoolExecutor() <span class="keyword">as</span> executor:
+        <span class="comment"># Submit CPU work to process</span>
+        result = <span class="keyword">await</span> loop.<span class="function">run_in_executor</span>(
+            executor, 
+            cpu_intensive_func,
+            big_data
+        )
+        <span class="comment"># ⚡ Task yields control immediately after submit!</span>
+        <span class="comment"># Event loop is FREE while process works</span>
+    <span class="keyword">return</span> result
+        </div>
+        
+        <div class="architecture-grid" style="margin-top: 30px;">
+            <div class="main-column">
+                <h3 style="margin-top: 0; text-align: center;">🔄 Event Loop</h3>
+                <div style="background: white; padding: 15px; border-radius: 8px; margin: 10px 0;">
+                    <strong>Task 1</strong><br>
+                    Waiting for Process 1
+                </div>
+                <div style="background: white; padding: 15px; border-radius: 8px; margin: 10px 0;">
+                    <strong>Task 2</strong><br>
+                    Waiting for Process 2
+                </div>
+                <div style="background: white; padding: 15px; border-radius: 8px; margin: 10px 0;">
+                    <strong>Task 3</strong><br>
+                    Running (pure async)
+                </div>
+                <div style="margin-top: 20px; padding: 15px; background: #d4edda; border-radius: 8px; border: 2px solid #28a745;">
+                    <strong>🎯 Event Loop is FREE</strong>
+                </div>
+            </div>
+            
+            <div class="workers-column">
+                <h3 style="text-align: center;">⚙️ Process Pool Workers</h3>
+                <div class="worker-box process-worker-box">
+                    <strong>Process 1</strong><br>
+                    Running: cpu_func()<br>
+                    Own Python Interpreter<br>
+                    <small>🔥 100% CPU on Core 1</small>
+                </div>
+                <div class="worker-box process-worker-box">
+                    <strong>Process 2</strong><br>
+                    Running: cpu_func()<br>
+                    Own Python Interpreter<br>
+                    <small>🔥 100% CPU on Core 2</small>
+                </div>
+                <div class="worker-box process-worker-box">
+                    <strong>Process 3</strong><br>
+                    Status: Idle<br>
+                    <small>💤 Ready for work</small>
+                </div>
+                <div class="worker-box process-worker-box">
+                    <strong>Process 4</strong><br>
+                    Status: Idle<br>
+                    <small>💤 Ready for work</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FINAL SUMMARY -->
+    <div class="section">
+        <h2>📋 Final Summary</h2>
+        
+        <div class="comparison">
+            <div style="background: #ffe5e5; padding: 25px; border-radius: 10px; border: 3px solid #e74c3c;">
+                <h3 style="margin-top: 0; color: #e74c3c;">❌ If Executors BLOCKED Event Loop</h3>
+                <ul style="font-size: 1.05em;">
+                    <li>Submit work to thread/process</li>
+                    <li>Event loop STOPS and waits</li>
+                    <li>Other tasks can't run</li>
+                    <li>Everything becomes sequential</li>
+                    <li>Total time: sum of all work</li>
+                    <li><strong>No point using asyncio!</strong></li>
+                </ul>
+            </div>
+            
+            <div style="background: #e8f8f5; padding: 25px; border-radius: 10px; border: 3px solid #27ae60;">
+                <h3 style="margin-top: 0; color: #27ae60;">✅ Reality: Executors DON'T Block</h3>
+                <ul style="font-size: 1.05em;">
+                    <li>Submit work to thread/process</li>
+                    <li>Event loop CONTINUES immediately</li>
+                    <li>Other tasks keep running</li>
+                    <li>True concurrency achieved</li>
+                    <li>Total time: max of all work</li>
+                    <li><strong>This is why asyncio + executors is powerful!</strong></li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="highlight" style="margin-top: 30px;">
+            <strong>🎯 The Bottom Line:</strong><br><br>
+            When an async task calls <code>await asyncio.to_thread()</code> or <code>await loop.run_in_executor()</code>:
+            <ol style="font-size: 1.1em; margin-top: 15px;">
+                <li>Work is submitted to the executor (thread/process pool)</li>
+                <li>The async task <strong>immediately yields</strong> control (doesn't wait!)</li>
+                <li>Event loop is <strong>FREE</strong> to run other tasks</li>
+                <li>Executor workers run <strong>in parallel</strong> with event loop</li>
+                <li>When executor finishes, it notifies event loop</li>
+                <li>Task resumes and gets the result</li>
+            </ol>
+            <p style="font-size: 1.2em; margin-top: 20px; color: #27ae60;">
+                <strong>This is non-blocking, concurrent execution! 🚀</strong>
+            </p>
+        </div>
+    </div>
+
+</body>
+</html>

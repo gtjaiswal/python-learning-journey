@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Complete Asyncio Concepts Diagram</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        h1 {
+            color: white;
+            text-align: center;
+            font-size: 2.5em;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .section {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        
+        h2 {
+            color: #2c3e50;
+            border-left: 6px solid #3498db;
+            padding-left: 15px;
+            margin-top: 0;
+            font-size: 1.8em;
+        }
+        
+        h3 {
+            color: #34495e;
+            margin-top: 25px;
+            font-size: 1.3em;
+        }
+        
+        .concept-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin: 25px 0;
+        }
+        
+        .concept-card {
+            border: 3px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 20px;
+            background: #f8f9fa;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        
+        .concept-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+        }
+        
+        .concept-card h4 {
+            margin: 0 0 15px 0;
+            color: #2c3e50;
+            font-size: 1.4em;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 8px;
+        }
+        
+        .concept-card .icon {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            display: block;
+        }
+        
+        .visual-diagram {
+            background: #f8f9fa;
+            border: 3px solid #3498db;
+            border-radius: 10px;
+            padding: 30px;
+            margin: 25px 0;
+            position: relative;
+        }
+        
+        .diagram-title {
+            background: #3498db;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 5px;
+            display: inline-block;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        
+        .process-box {
+            border: 3px solid #e74c3c;
+            background: #ffe5e5;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 10px;
+            position: relative;
+        }
+        
+        .thread-box {
+            border: 3px solid #27ae60;
+            background: #e8f8f5;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 8px 0;
+        }
+        
+        .memory-box {
+            border: 2px dashed #9b59b6;
+            background: #f4ecf7;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        
+        .executor-box {
+            border: 3px solid #f39c12;
+            background: #fef5e7;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 15px 0;
+        }
+        
+        .event-loop-box {
+            border: 4px solid #3498db;
+            background: #ebf5fb;
+            padding: 25px;
+            border-radius: 12px;
+            margin: 15px 0;
+            position: relative;
+        }
+        
+        .arrow {
+            text-align: center;
+            font-size: 2em;
+            color: #3498db;
+            margin: 10px 0;
+        }
+        
+        .code-snippet {
+            background: #282c34;
+            color: #abb2bf;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 13px;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+        
+        .keyword { color: #c678dd; }
+        .function { color: #61afef; }
+        .string { color: #98c379; }
+        .comment { color: #5c6370; }
+        
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        
+        .comparison-table th {
+            background: #3498db;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: bold;
+        }
+        
+        .comparison-table td {
+            padding: 12px;
+            border: 1px solid #ddd;
+        }
+        
+        .comparison-table tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+        
+        .highlight-box {
+            background: #fff3cd;
+            border-left: 5px solid #ffc107;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        
+        .highlight-box strong {
+            color: #856404;
+            font-size: 1.1em;
+        }
+        
+        .flow-diagram {
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            margin: 25px 0;
+        }
+        
+        .flow-step {
+            flex: 1;
+            min-width: 200px;
+            text-align: center;
+            padding: 15px;
+            background: #ecf0f1;
+            border-radius: 8px;
+            margin: 10px;
+            border: 2px solid #95a5a6;
+        }
+        
+        .flow-arrow {
+            font-size: 2em;
+            color: #3498db;
+        }
+        
+        .tag {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 15px;
+            font-size: 0.85em;
+            font-weight: bold;
+            margin: 5px 5px 5px 0;
+        }
+        
+        .tag-cpu { background: #e74c3c; color: white; }
+        .tag-io { background: #27ae60; color: white; }
+        .tag-async { background: #3498db; color: white; }
+        .tag-sync { background: #95a5a6; color: white; }
+        
+        .architecture-diagram {
+            display: flex;
+            gap: 20px;
+            margin: 25px 0;
+            flex-wrap: wrap;
+        }
+        
+        .arch-column {
+            flex: 1;
+            min-width: 300px;
+        }
+        
+        .layer {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border-left: 5px solid;
+        }
+        
+        .layer-main { background: #ebf5fb; border-color: #3498db; }
+        .layer-executor { background: #fef5e7; border-color: #f39c12; }
+        .layer-worker { background: #e8f8f5; border-color: #27ae60; }
+        .layer-process { background: #ffe5e5; border-color: #e74c3c; }
+    </style>
+</head>
+<body>
+    <h1>🔄 Complete Guide: Threads, Processes, Executors & Asyncio</h1>
+    
+    <!-- SECTION 1: FUNDAMENTAL CONCEPTS -->
+    <div class="section">
+        <h2>1️⃣ Fundamental Building Blocks</h2>
+        
+        <div class="concept-grid">
+            <div class="concept-card">
+                <span class="icon">🧵</span>
+                <h4>Thread</h4>
+                <p><strong>What:</strong> Lightweight execution unit within a process</p>
+                <p><strong>Memory:</strong> Shares memory with other threads in same process</p>
+                <p><strong>Use:</strong> I/O-bound tasks (waiting for network, disk, etc.)</p>
+                <p><strong>Limitation:</strong> GIL prevents true parallel CPU work</p>
+                <div class="code-snippet">
+<span class="keyword">import</span> threading
+
+<span class="keyword">def</span> <span class="function">worker</span>():
+    <span class="function">print</span>(<span class="string">"Working..."</span>)
+
+thread = threading.<span class="function">Thread</span>(target=worker)
+thread.<span class="function">start</span>()
+thread.<span class="function">join</span>()
+                </div>
+                <span class="tag tag-io">I/O-Bound</span>
+                <span class="tag tag-sync">Synchronous</span>
+            </div>
+            
+            <div class="concept-card">
+                <span class="icon">⚙️</span>
+                <h4>Process</h4>
+                <p><strong>What:</strong> Independent program execution with own Python interpreter</p>
+                <p><strong>Memory:</strong> Completely separate memory space</p>
+                <p><strong>Use:</strong> CPU-bound tasks (heavy computation)</p>
+                <p><strong>Advantage:</strong> Bypasses GIL, true parallelism</p>
+                <div class="code-snippet">
+<span class="keyword">import</span> multiprocessing
+
+<span class="keyword">def</span> <span class="function">worker</span>():
+    <span class="function">print</span>(<span class="string">"Computing..."</span>)
+
+process = multiprocessing.<span class="function">Process</span>(target=worker)
+process.<span class="function">start</span>()
+process.<span class="function">join</span>()
+                </div>
+                <span class="tag tag-cpu">CPU-Bound</span>
+                <span class="tag tag-sync">Synchronous</span>
+            </div>
+            
+            <div class="concept-card">
+                <span class="icon">🏊</span>
+                <h4>Pool</h4>
+                <p><strong>What:</strong> Collection of pre-created workers (threads or processes)</p>
+                <p><strong>Why:</strong> Reuse workers instead of creating new ones (expensive!)</p>
+                <p><strong>Benefit:</strong> Better resource management, faster task execution</p>
+                <p><strong>Analogy:</strong> Restaurant with fixed number of chefs vs hiring new chef for each order</p>
+                <div class="code-snippet">
+<span class="comment"># Thread Pool</span>
+<span class="keyword">from</span> concurrent.futures <span class="keyword">import</span> ThreadPoolExecutor
+<span class="keyword">with</span> <span class="function">ThreadPoolExecutor</span>(max_workers=4) <span class="keyword">as</span> pool:
+    pool.<span class="function">submit</span>(task)
+
+<span class="comment"># Process Pool</span>
+<span class="keyword">from</span> concurrent.futures <span class="keyword">import</span> ProcessPoolExecutor
+<span class="keyword">with</span> <span class="function">ProcessPoolExecutor</span>(max_workers=4) <span class="keyword">as</span> pool:
+    pool.<span class="function">submit</span>(task)
+                </div>
+            </div>
+            
+            <div class="concept-card">
+                <span class="icon">🔄</span>
+                <h4>Event Loop</h4>
+                <p><strong>What:</strong> Single-threaded scheduler for async tasks</p>
+                <p><strong>How:</strong> Manages when each coroutine runs, switches between them</p>
+                <p><strong>Key:</strong> Never blocks - always ready to switch to another task</p>
+                <p><strong>Core:</strong> Heart of asyncio, runs all async code</p>
+                <div class="code-snippet">
+<span class="keyword">import</span> asyncio
+
+<span class="keyword">async def</span> <span class="function">main</span>():
+    <span class="keyword">await</span> asyncio.<span class="function">sleep</span>(1)
+
+<span class="comment"># Creates event loop and runs</span>
+asyncio.<span class="function">run</span>(main())
+                </div>
+                <span class="tag tag-async">Async</span>
+                <span class="tag tag-io">I/O-Bound</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- SECTION 2: VISUAL ARCHITECTURE -->
+    <div class="section">
+        <h2>2️⃣ Architecture: How They Relate</h2>
+        
+        <div class="visual-diagram">
+            <div class="diagram-title">Single Process with Threads (Shared Memory)</div>
+            <div class="process-box">
+                <strong>🖥️ Python Process (One Python Interpreter)</strong>
+                <div class="memory-box">
+                    <strong>💾 Shared Memory Space</strong>
+                    <ul>
+                        <li>Global variables accessible by all threads</li>
+                        <li>Objects can be shared</li>
+                        <li>Risk: Race conditions without proper locking</li>
+                    </ul>
+                </div>
+                <div class="thread-box">
+                    <strong>🧵 Thread 1</strong> - Reads from shared memory
+                </div>
+                <div class="thread-box">
+                    <strong>🧵 Thread 2</strong> - Writes to shared memory
+                </div>
+                <div class="thread-box">
+                    <strong>🧵 Thread 3</strong> - Reads from shared memory
+                </div>
+                <div class="highlight-box">
+                    <strong>⚠️ GIL (Global Interpreter Lock):</strong> Only ONE thread executes Python bytecode at a time, even on multi-core CPU!
+                </div>
+            </div>
+        </div>
+        
+        <div class="visual-diagram">
+            <div class="diagram-title">Multiple Processes (Separate Memory)</div>
+            <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                <div class="process-box" style="flex: 1; min-width: 250px;">
+                    <strong>🖥️ Process 1</strong>
+                    <div class="memory-box">
+                        <strong>💾 Memory Space A</strong>
+                        <p>Independent data</p>
+                    </div>
+                    <p>✅ Own Python Interpreter</p>
+                    <p>✅ Own GIL (no sharing!)</p>
+                </div>
+                
+                <div class="process-box" style="flex: 1; min-width: 250px;">
+                    <strong>🖥️ Process 2</strong>
+                    <div class="memory-box">
+                        <strong>💾 Memory Space B</strong>
+                        <p>Independent data</p>
+                    </div>
+                    <p>✅ Own Python Interpreter</p>
+                    <p>✅ Own GIL (no sharing!)</p>
+                </div>
+                
+                <div class="process-box" style="flex: 1; min-width: 250px;">
+                    <strong>🖥️ Process 3</strong>
+                    <div class="memory-box">
+                        <strong>💾 Memory Space C</strong>
+                        <p>Independent data</p>
+                    </div>
+                    <p>✅ Own Python Interpreter</p>
+                    <p>✅ Own GIL (no sharing!)</p>
+                </div>
+            </div>
+            <div class="arrow">↕️ Communication via IPC (pickle/unpickle) ↕️</div>
+            <div class="highlight-box">
+                <strong>🚀 True Parallelism:</strong> Each process can use different CPU cores simultaneously!
+            </div>
+        </div>
+    </div>
+
+    <!-- SECTION 3: EXECUTORS -->
+    <div class="section">
+        <h2>3️⃣ Executors: Managing Workers</h2>
+        
+        <div class="architecture-diagram">
+            <div class="arch-column">
+                <h3>ThreadPoolExecutor</h3>
+                <div class="executor-box">
+                    <strong>🏊 Thread Pool Manager</strong>
+                    <div class="layer layer-main">
+                        <strong>Main Thread</strong><br>
+                        Submits tasks to pool
+                    </div>
+                    <div class="layer layer-executor">
+                        <strong>ThreadPoolExecutor</strong><br>
+                        • Manages worker threads<br>
+                        • Queue of pending tasks<br>
+                        • Returns Future objects
+                    </div>
+                    <div class="layer layer-worker">
+                        <strong>Worker Thread 1</strong><br>
+                        Executes tasks
+                    </div>
+                    <div class="layer layer-worker">
+                        <strong>Worker Thread 2</strong><br>
+                        Executes tasks
+                    </div>
+                    <div class="layer layer-worker">
+                        <strong>Worker Thread N</strong><br>
+                        Executes tasks
+                    </div>
+                </div>
+                <div class="code-snippet">
+<span class="keyword">from</span> concurrent.futures <span class="keyword">import</span> ThreadPoolExecutor
+
+<span class="keyword">with</span> <span class="function">ThreadPoolExecutor</span>(max_workers=4) <span class="keyword">as</span> executor:
+    <span class="comment"># Submit returns Future immediately</span>
+    future = executor.<span class="function">submit</span>(func, arg)
+    result = future.<span class="function">result</span>()  <span class="comment"># Blocks until done</span>
+                </div>
+                <span class="tag tag-io">I/O-Bound</span>
+                <span class="tag tag-sync">Blocking API</span>
+            </div>
+            
+            <div class="arch-column">
+                <h3>ProcessPoolExecutor</h3>
+                <div class="executor-box">
+                    <strong>🏊 Process Pool Manager</strong>
+                    <div class="layer layer-main">
+                        <strong>Main Process</strong><br>
+                        Submits tasks to pool
+                    </div>
+                    <div class="layer layer-executor">
+                        <strong>ProcessPoolExecutor</strong><br>
+                        • Manages worker processes<br>
+                        • Handles pickling/unpickling<br>
+                        • IPC queue management
+                    </div>
+                    <div class="layer layer-process">
+                        <strong>Worker Process 1</strong><br>
+                        Separate memory
+                    </div>
+                    <div class="layer layer-process">
+                        <strong>Worker Process 2</strong><br>
+                        Separate memory
+                    </div>
+                    <div class="layer layer-process">
+                        <strong>Worker Process N</strong><br>
+                        Separate memory
+                    </div>
+                </div>
+                <div class="code-snippet">
+<span class="keyword">from</span> concurrent.futures <span class="keyword">import</span> ProcessPoolExecutor
+
+<span class="keyword">with</span> <span class="function">ProcessPoolExecutor</span>(max_workers=4) <span class="keyword">as</span> executor:
+    <span class="comment"># Submit returns Future immediately</span>
+    future = executor.<span class="function">submit</span>(func, arg)
+    result = future.<span class="function">result</span>()  <span class="comment"># Blocks until done</span>
+                </div>
+                <span class="tag tag-cpu">CPU-Bound</span>
+                <span class="tag tag-sync">Blocking API</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- SECTION 4: ASYNCIO INTEGRATION -->
+    <div class="section">
+        <h2>4️⃣ Asyncio Integration: Bridging Sync and Async</h2>
+        
+        <div class="visual-diagram">
+            <div class="diagram-title">How Asyncio Works with Executors</div>
+            
+            <div class="event-loop-box">
+                <strong>🔄 ASYNCIO EVENT LOOP (Single Thread)</strong>
+                <p style="margin: 15px 0;">Manages all async tasks, never blocks</p>
+                
+                <div class="flow-diagram">
+                    <div class="flow-step" style="background: #e8f8f5;">
+                        <strong>Async Task 1</strong><br>
+                        <code>await asyncio.sleep()</code><br>
+                        <small>Pure async, no executor needed</small>
+                    </div>
+                    <div class="flow-step" style="background: #e8f8f5;">
+                        <strong>Async Task 2</strong><br>
+                        <code>await aiohttp.get()</code><br>
+                        <small>Pure async, no executor needed</small>
+                    </div>
+                </div>
+                
+                <div class="arrow">⬇️ When you need blocking code ⬇️</div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
+                    <div class="executor-box">
+                        <strong>🧵 ThreadPoolExecutor</strong>
+                        <p><code>asyncio.to_thread()</code></p>
+                        <p><code>loop.run_in_executor(None, ...)</code></p>
+                        <div class="code-snippet">
+<span class="keyword">async def</span> <span class="function">fetch_url</span>():
+    <span class="comment"># Blocking requests.get() runs in thread</span>
+    result = <span class="keyword">await</span> asyncio.<span class="function">to_thread</span>(
+        requests.get, 
+        <span class="string">"https://api.com"</span>
+    )
+    <span class="keyword">return</span> result
+                        </div>
+                        <span class="tag tag-io">I/O-Bound Blocking</span>
+                    </div>
+                    
+                    <div class="executor-box">
+                        <strong>⚙️ ProcessPoolExecutor</strong>
+                        <p><code>loop.run_in_executor(executor, ...)</code></p>
+                        <div class="code-snippet">
+<span class="keyword">async def</span> <span class="function">heavy_compute</span>():
+    loop = asyncio.<span class="function">get_running_loop</span>()
+    <span class="keyword">with</span> ProcessPoolExecutor() <span class="keyword">as</span> exe:
+        <span class="comment"># CPU work runs in separate process</span>
+        result = <span class="keyword">await</span> loop.<span class="function">run_in_executor</span>(
+            exe, 
+            cpu_intensive_func, 
+            data
+        )
+    <span class="keyword">return</span> result
+                        </div>
+                        <span class="tag tag-cpu">CPU-Bound</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SECTION 5: KEY FUNCTIONS -->
+    <div class="section">
+        <h2>5️⃣ Key Functions Explained</h2>
+        
+        <div class="concept-grid">
+            <div class="concept-card">
+                <h4>asyncio.create_task()</h4>
+                <p><strong>What:</strong> Schedules a coroutine to run on event loop</p>
+                <p><strong>Returns:</strong> Task object immediately (doesn't wait)</p>
+                <p><strong>Effect:</strong> Task starts running as soon as possible</p>
+                <div class="code-snippet">
+<span class="keyword">async def</span> <span class="function">main</span>():
+    <span class="comment"># Creates and schedules task</span>
+    task = asyncio.<span class="function">create_task</span>(my_coroutine())
+    <span class="comment"># Task is now running in background</span>
+    
+    <span class="comment"># Do other work...</span>
+    
+    <span class="comment"># Wait for task to complete</span>
+    result = <span class="keyword">await</span> task
+                </div>
+                <span class="tag tag-async">Async</span>
+            </div>
+            
+            <div class="concept-card">
+                <h4>asyncio.to_thread()</h4>
+                <p><strong>What:</strong> Runs blocking function in a thread pool</p>
+                <p><strong>Use:</strong> Blocking I/O libraries (requests, psycopg2, etc.)</p>
+                <p><strong>Benefit:</strong> Event loop stays responsive</p>
+                <div class="code-snippet">
+<span class="keyword">async def</span> <span class="function">fetch</span>():
+    <span class="comment"># requests.get() would block event loop!</span>
+    <span class="comment"># to_thread() runs it in separate thread</span>
+    response = <span class="keyword">await</span> asyncio.<span class="function">to_thread</span>(
+        requests.get,
+        <span class="string">"https://api.com"</span>
+    )
+    <span class="keyword">return</span> response.json()
+                </div>
+                <span class="tag tag-async">Async</span>
+                <span class="tag tag-io">I/O-Bound</span>
+            </div>
+            
+            <div class="concept-card">
+                <h4>loop.run_in_executor()</h4>
+                <p><strong>What:</strong> Low-level function to run blocking code in executor</p>
+                <p><strong>Executors:</strong> Can use ThreadPoolExecutor or ProcessPoolExecutor</p>
+                <p><strong>Note:</strong> <code>to_thread()</code> is simpler wrapper for threads</p>
+                <div class="code-snippet">
+<span class="keyword">async def</span> <span class="function">compute</span>():
+    loop = asyncio.<span class="function">get_running_loop</span>()
+    
+    <span class="comment"># Run in thread pool (None = default)</span>
+    result1 = <span class="keyword">await</span> loop.<span class="function">run_in_executor</span>(
+        <span class="keyword">None</span>, blocking_io_func
+    )
+    
+    <span class="comment"># Run in process pool</span>
+    <span class="keyword">with</span> ProcessPoolExecutor() <span class="keyword">as</span> exe:
+        result2 = <span class="keyword">await</span> loop.<span class="function">run_in_executor</span>(
+            exe, cpu_intensive_func
+        )
+                </div>
+                <span class="tag tag-async">Async</span>
+            </div>
+            
+            <div class="concept-card">
+                <h4>executor.submit()</h4>
+                <p><strong>What:</strong> Submits task to executor (sync API)</p>
+                <p><strong>Returns:</strong> Future object (not awaitable in asyncio!)</p>
+                <p><strong>Use:</strong> When NOT using asyncio</p>
+                <div class="code-snippet">
+<span class="keyword">from</span> concurrent.futures <span class="keyword">import</span> ProcessPoolExecutor
+
+<span class="comment"># Synchronous code (no asyncio)</span>
+<span class="keyword">with</span> ProcessPoolExecutor() <span class="keyword">as</span> executor:
+    future = executor.<span class="function">submit</span>(func, arg)
+    result = future.<span class="function">result</span>()  <span class="comment"># Blocks!</span>
+                </div>
+                <span class="tag tag-sync">Synchronous</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- SECTION 6: COMPLETE FLOW -->
+    <div class="section">
+        <h2>6️⃣ Complete Flow: Asyncio + Executors</h2>
+        
+        <div class="visual-diagram">
+            <div class="diagram-title">Example: Mixing Async, Threads, and Processes</div>
+            
+            <div class="code-snippet">
+<span class="keyword">import</span> asyncio
+<span class="keyword">import</span> requests  <span class="comment"># Blocking library</span>
+<span class="keyword">from</span> concurrent.futures <span class="keyword">import</span> ProcessPoolExecutor
+
+<span class="keyword">def</span> <span class="function">cpu_work</span>(n):
+    <span class="comment"># Heavy computation</span>
+    <span class="keyword">return</span> <span class="function">sum</span>(i * i <span class="keyword">for</span> i <span class="keyword">in</span> <span class="function">range</span>(n))
+
+<span class="keyword">async def</span> <span class="function">main</span>():
+    <span class="comment"># 1. Pure async - runs on event loop</span>
+    <span class="keyword">await</span> asyncio.<span class="function">sleep</span>(1)
+    <span class="function">print</span>(<span class="string">"Event loop task done"</span>)
+    
+    <span class="comment"># 2. Blocking I/O - run in thread</span>
+    response = <span class="keyword">await</span> asyncio.<span class="function">to_thread</span>(
+        requests.get, 
+        <span class="string">"https://api.com"</span>
+    )
+    <span class="function">print</span>(<span class="string">"Thread task done"</span>)
+    
+    <span class="comment"># 3. CPU-bound - run in process</span>
+    loop = asyncio.<span class="function">get_running_loop</span>()
+    <span class="keyword">with</span> ProcessPoolExecutor() <span class="keyword">as</span> executor:
+        result = <span class="keyword">await</span> loop.<span class="function">run_in_executor</span>(
+            executor,
+            cpu_work,
+            10_000_000
+        )
+    <span class="function">print</span>(<span class="string">f"Process task done: {result}"</span>)
+
+asyncio.<span class="function">run</span>(main())
+            </div>
+            
+            <div class="flow-diagram" style="flex-direction: column; align-items: stretch;">
+                <div class="flow-step" style="background: #ebf5fb;">
+                    <strong>Step 1: Pure Async</strong><br>
+                    <code>await asyncio.sleep(1)</code><br>
+                    <small>Runs directly on event loop, no executor needed</small>
+                </div>
+                <div class="arrow">⬇️</div>
+                <div class="flow-step" style="background: #e8f8f5;">
+                    <strong>Step 2: Thread Executor</strong><br>
+                    <code>await asyncio.to_thread(requests.get, ...)</code><br>
+                    <small>Event loop → ThreadPool → Thread executes → Returns to event loop</small>
+                </div>
+                <div class="arrow">⬇️</div>
+                <div class="flow-step" style="background: #ffe5e5;">
+                    <strong>Step 3: Process Executor</strong><br>
+                    <code>await loop.run_in_executor(executor, cpu_work, ...)</code><br>
+                    <small>Event loop → ProcessPool → Process executes → Returns to event loop</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SECTION 7: DECISION TABLE -->
+    <div class="section">
+        <h2>7️⃣ Decision Guide: What to Use When</h2>
+        
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>Scenario</th>
+                    <th>Use This</th>
+                    <th>Why</th>
+                    <th>Example</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>✅ Pure async I/O</td>
+                    <td><strong>asyncio + async libraries</strong></td>
+                    <td>Most efficient, no threads/processes needed</td>
+                    <td>aiohttp, asyncpg, aiofiles</td>
+                </tr>
+                <tr>
+                    <td>🔌 Blocking I/O library</td>
+                    <td><strong>asyncio.to_thread()</strong></td>
+                    <td>Keeps event loop responsive</td>
+                    <td>requests, psycopg2, PIL</td>
+                </tr>
+                <tr>
+                    <td>🧮 CPU-intensive work</td>
+                    <td><strong>ProcessPoolExecutor</strong></td>
+                    <td>Bypasses GIL, true parallelism</td>
+                    <td>NumPy operations, ML inference</td>
+                </tr>
+                <tr>
+                    <td>📊 Many small blocking calls</td>
+                    <td><strong>ThreadPoolExecutor</strong></td>
+                    <td>Lower overhead than processes</td>
+                    <td>Database queries, API calls</td>
+                </tr>
+                <tr>
+                    <td>🚫 Simple synchronous script</td>
+                    <td><strong>Regular functions</strong></td>
+                    <td>Don't overcomplicate!</td>
+                    <td>CLI tools, simple scripts</td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <div class="highlight-box">
+            <strong>🎯 Golden Rule:</strong> Start with pure async libraries. Only use executors when you must integrate blocking code. Use processes for CPU work, threads for I/O work.
+        </div>
+    </div>
+
+    <!-- SECTION 8: COMPARISON SUMMARY -->
+    <div class="section">
+        <h2>8️⃣ Quick Reference Summary</h2>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+            <div style="background: #e8f8f5; padding: 20px; border-radius: 10px; border-left: 5px solid #27ae60;">
+                <h3 style="margin-top: 0;">🧵 Threading</h3>
+                <ul>
+                    <li><strong>API:</strong> <code>ThreadPoolExecutor</code></li>
+                    <li><strong>With asyncio:</strong> <code>asyncio.to_thread()</code></li>
+                    <li><strong>Memory:</strong> Shared</li>
+                    <li><strong>GIL:</strong> Yes</li>
+                    <li><strong>Use for:</strong> I/O-bound blocking</li>
+                </ul>
+            </div>
+            
+            <div style="background: #ffe5e5; padding: 20px; border-radius: 10px; border-left: 5px solid #e74c3c;">
+                <h3 style="margin-top: 0;">⚙️ Multiprocessing</h3>
+                <ul>
+                    <li><strong>API:</strong> <code>ProcessPoolExecutor</code></li>
+                    <li><strong>With asyncio:</strong> <code>loop.run_in_executor()</code></li>
+                    <li><strong>Memory:</strong> Separate</li>
+                    <li><strong>GIL:</strong> No</li>
+                    <li><strong>Use for:</strong> CPU-bound work</li>
+                </ul>
+            </div>
+            
+            <div style="background: #ebf5fb; padding: 20px; border-radius: 10px; border-left: 5px solid #3498db;">
+                <h3 style="margin-top: 0;">🔄 Asyncio</h3>
+                <ul>
+                    <li><strong>API:</strong> <code>async/await</code></li>
+                    <li><strong>Scheduling:</strong> <code>create_task()</code></li>
+                    <li><strong>Memory:</strong> Single thread</li>
+                    <li><strong>GIL:</strong> N/A (cooperative)</li>
+                    <li><strong>Use for:</strong> I/O-bound async</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

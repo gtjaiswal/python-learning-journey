@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CPU-Bound: Why Threads Don't Help</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        h1 {
+            color: white;
+            text-align: center;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .section {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        
+        h2 {
+            color: #2c3e50;
+            border-left: 6px solid #3498db;
+            padding-left: 15px;
+        }
+        
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin: 30px 0;
+        }
+        
+        .result-card {
+            border-radius: 10px;
+            padding: 25px;
+            text-align: center;
+            border: 3px solid;
+        }
+        
+        .result-sequential {
+            background: #f8f9fa;
+            border-color: #6c757d;
+        }
+        
+        .result-threads {
+            background: #ffe5e5;
+            border-color: #e74c3c;
+        }
+        
+        .result-processes {
+            background: #d4edda;
+            border-color: #28a745;
+        }
+        
+        .result-card h3 {
+            margin: 0 0 15px 0;
+            font-size: 1.5em;
+        }
+        
+        .result-card .time {
+            font-size: 3em;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+        
+        .result-card .speedup {
+            font-size: 1.2em;
+            padding: 10px;
+            background: rgba(0,0,0,0.05);
+            border-radius: 5px;
+            margin-top: 15px;
+        }
+        
+        .code-block {
+            background: #282c34;
+            color: #abb2bf;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Consolas', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+            margin: 20px 0;
+        }
+        
+        .keyword { color: #c678dd; }
+        .function { color: #61afef; }
+        .string { color: #98c379; }
+        .comment { color: #5c6370; }
+        
+        .timeline {
+            margin: 30px 0;
+        }
+        
+        .timeline-comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 20px;
+            margin: 30px 0;
+        }
+        
+        .timeline-column {
+            border: 2px solid;
+            border-radius: 8px;
+            padding: 20px;
+        }
+        
+        .timeline-sequential {
+            border-color: #6c757d;
+            background: #f8f9fa;
+        }
+        
+        .timeline-threads {
+            border-color: #e74c3c;
+            background: #ffe5e5;
+        }
+        
+        .timeline-processes {
+            border-color: #28a745;
+            background: #d4edda;
+        }
+        
+        .time-block {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            text-align: center;
+            font-weight: bold;
+        }
+        
+        .block-computing {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        .block-idle {
+            background: #ecf0f1;
+            color: #7f8c8d;
+        }
+        
+        .highlight {
+            background: #fff3cd;
+            border-left: 5px solid #ffc107;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        
+        .highlight strong {
+            color: #856404;
+            font-size: 1.2em;
+        }
+        
+        .gil-diagram {
+            background: #f8f9fa;
+            border: 3px solid #e74c3c;
+            border-radius: 10px;
+            padding: 30px;
+            margin: 30px 0;
+        }
+        
+        .gil-row {
+            display: flex;
+            align-items: center;
+            margin: 15px 0;
+            gap: 15px;
+        }
+        
+        .gil-time {
+            width: 80px;
+            font-weight: bold;
+            color: #e74c3c;
+        }
+        
+        .gil-holder {
+            flex: 1;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: bold;
+        }
+        
+        .thread-active {
+            background: #e74c3c;
+            color: white;
+            border: 3px solid #c0392b;
+        }
+        
+        .thread-waiting {
+            background: #ecf0f1;
+            color: #7f8c8d;
+            border: 2px dashed #95a5a6;
+        }
+        
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        
+        .comparison-table th {
+            background: #3498db;
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: bold;
+        }
+        
+        .comparison-table td {
+            padding: 15px;
+            border: 1px solid #ddd;
+        }
+        
+        .comparison-table tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+        
+        .check { color: #28a745; font-size: 1.5em; }
+        .cross { color: #e74c3c; font-size: 1.5em; }
+    </style>
+</head>
+<body>
+    <h1>🧮 CPU-Bound Work: The GIL Problem</h1>
+    
+    <!-- RESULTS -->
+    <div class="section">
+        <h2>📊 Benchmark Results</h2>
+        
+        <div class="results-grid">
+            <div class="result-card result-sequential">
+                <h3>Sequential</h3>
+                <div>4 calls, one after another</div>
+                <div class="time">4.77s</div>
+                <div class="speedup">Baseline (1x)</div>
+            </div>
+            
+            <div class="result-card result-threads">
+                <h3>ThreadPoolExecutor</h3>
+                <div>4 threads running</div>
+                <div class="time" style="color: #e74c3c;">5.25s</div>
+                <div class="speedup" style="color: #e74c3c;">
+                    <strong>SLOWER!</strong><br>
+                    0.91x (overhead made it worse!)
+                </div>
+            </div>
+            
+            <div class="result-card result-processes">
+                <h3>ProcessPoolExecutor</h3>
+                <div>4 processes running</div>
+                <div class="time" style="color: #28a745;">1.50s</div>
+                <div class="speedup" style="color: #28a745;">
+                    <strong>3.18x FASTER!</strong><br>
+                    True parallelism achieved
+                </div>
+            </div>
+        </div>
+        
+        <div class="highlight">
+            <strong>🎯 Key Observation:</strong><br><br>
+            • Sequential: 4.77 seconds<br>
+            • ThreadPoolExecutor: 5.25 seconds (WORSE due to context switching overhead!)<br>
+            • ProcessPoolExecutor: 1.50 seconds (3.18x speedup - using multiple CPU cores!)<br>
+            <br>
+            <strong style="color: #e74c3c;">Threads provided ZERO benefit for CPU-bound work due to the GIL!</strong>
+        </div>
+    </div>
+
+    <!-- THE CODE -->
+    <div class="section">
+        <h2>📝 The Code</h2>
+        
+        <div class="code-block">
+<span class="keyword">def</span> <span class="function">get_primes</span>(limit: <span class="keyword">int</span>) -> list[<span class="keyword">int</span>]:
+    <span class="comment">"""Calculate primes using Sieve of Eratosthenes - CPU intensive!"""</span>
+    primes = []
+    sieve = [<span class="keyword">True</span>] * (limit + 1)
+    sieve[0] = sieve[1] = <span class="keyword">False</span>
+    
+    <span class="comment"># This is pure computation - no I/O, just CPU work</span>
+    <span class="keyword">for</span> i <span class="keyword">in</span> <span class="function">range</span>(2, <span class="function">int</span>(math.sqrt(limit)) + 1):
+        <span class="keyword">if</span> sieve[i]:
+            <span class="keyword">for</span> multiple <span class="keyword">in</span> <span class="function">range</span>(i*i, limit + 1, i):
+                sieve[multiple] = <span class="keyword">False</span>
+    
+    <span class="keyword">for</span> i <span class="keyword">in</span> <span class="function">range</span>(2, limit + 1):
+        <span class="keyword">if</span> sieve[i]:
+            primes.append(i)
+    
+    <span class="keyword">return</span> primes
+
+<span class="comment"># Testing with limit = 10,000,000 (finds ~664,579 primes)</span>
+        </div>
+    </div>
+
+    <!-- TIMELINE VISUALIZATION -->
+    <div class="section">
+        <h2>⏱️ Timeline Visualization</h2>
+        
+        <div class="timeline-comparison">
+            <div class="timeline-column timeline-sequential">
+                <h3 style="text-align: center; margin-top: 0;">Sequential (4.77s)</h3>
+                <div class="time-block block-computing">Call 1<br>~1.19s</div>
+                <div class="time-block block-computing">Call 2<br>~1.19s</div>
+                <div class="time-block block-computing">Call 3<br>~1.19s</div>
+                <div class="time-block block-computing">Call 4<br>~1.19s</div>
+                <div style="margin-top: 20px; padding: 15px; background: #fff; border-radius: 5px;">
+                    <strong>Total: ~4.77s</strong><br>
+                    One CPU core used<br>
+                    Other cores idle
+                </div>
+            </div>
+            
+            <div class="timeline-column timeline-threads">
+                <h3 style="text-align: center; margin-top: 0;">Threads (5.25s)</h3>
+                <div style="display: flex; gap: 5px;">
+                    <div style="flex: 1;" class="time-block block-computing">T1</div>
+                    <div style="flex: 1;" class="time-block block-idle">T2</div>
+                    <div style="flex: 1;" class="time-block block-idle">T3</div>
+                    <div style="flex: 1;" class="time-block block-idle">T4</div>
+                </div>
+                <div style="display: flex; gap: 5px;">
+                    <div style="flex: 1;" class="time-block block-idle">T1</div>
+                    <div style="flex: 1;" class="time-block block-computing">T2</div>
+                    <div style="flex: 1;" class="time-block block-idle">T3</div>
+                    <div style="flex: 1;" class="time-block block-idle">T4</div>
+                </div>
+                <div style="display: flex; gap: 5px;">
+                    <div style="flex: 1;" class="time-block block-idle">T1</div>
+                    <div style="flex: 1;" class="time-block block-idle">T2</div>
+                    <div style="flex: 1;" class="time-block block-computing">T3</div>
+                    <div style="flex: 1;" class="time-block block-idle">T4</div>
+                </div>
+                <div style="display: flex; gap: 5px;">
+                    <div style="flex: 1;" class="time-block block-idle">T1</div>
+                    <div style="flex: 1;" class="time-block block-idle">T2</div>
+                    <div style="flex: 1;" class="time-block block-idle">T3</div>
+                    <div style="flex: 1;" class="time-block block-computing">T4</div>
+                </div>
+                <div style="margin-top: 20px; padding: 15px; background: #fff; border-radius: 5px;">
+                    <strong>Total: ~5.25s</strong><br>
+                    GIL forces sequential!<br>
+                    Context switching overhead<br>
+                    <strong style="color: #e74c3c;">SLOWER than sequential!</strong>
+                </div>
+            </div>
+            
+            <div class="timeline-column timeline-processes">
+                <h3 style="text-align: center; margin-top: 0;">Processes (1.50s)</h3>
+                <div style="display: flex; gap: 5px;">
+                    <div style="flex: 1;" class="time-block block-computing">P1<br>~1.5s</div>
+                    <div style="flex: 1;" class="time-block block-computing">P2<br>~1.5s</div>
+                    <div style="flex: 1;" class="time-block block-computing">P3<br>~1.5s</div>
+                    <div style="flex: 1;" class="time-block block-computing">P4<br>~1.5s</div>
+                </div>
+                <div style="margin-top: 20px; padding: 15px; background: #fff; border-radius: 5px;">
+                    <strong>Total: ~1.50s</strong><br>
+                    All 4 run in parallel!<br>
+                    Each has own GIL<br>
+                    <strong style="color: #28a745;">3.18x FASTER!</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- GIL EXPLANATION -->
+    <div class="section">
+        <h2>🔒 The GIL (Global Interpreter Lock) Problem</h2>
+        
+        <div class="gil-diagram">
+            <h3 style="text-align: center; margin-top: 0;">How the GIL Works with Threads</h3>
+            
+            <div style="background: #fff; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <p style="font-size: 1.1em; margin: 0;">
+                    <strong>The GIL is a mutex that protects access to Python objects.</strong><br>
+                    Only ONE thread can execute Python bytecode at a time, even on a multi-core CPU!
+                </p>
+            </div>
+            
+            <div class="gil-row">
+                <div class="gil-time">Time 0-250ms</div>
+                <div class="gil-holder thread-active">Thread 1 has GIL 🔒<br>Computing primes...</div>
+                <div class="gil-holder thread-waiting">Thread 2 waiting ⏳</div>
+                <div class="gil-holder thread-waiting">Thread 3 waiting ⏳</div>
+                <div class="gil-holder thread-waiting">Thread 4 waiting ⏳</div>
+            </div>
+            
+            <div class="gil-row">
+                <div class="gil-time">Time 250-500ms</div>
+                <div class="gil-holder thread-waiting">Thread 1 waiting ⏳</div>
+                <div class="gil-holder thread-active">Thread 2 has GIL 🔒<br>Computing primes...</div>
+                <div class="gil-holder thread-waiting">Thread 3 waiting ⏳</div>
+                <div class="gil-holder thread-waiting">Thread 4 waiting ⏳</div>
+            </div>
+            
+            <div class="gil-row">
+                <div class="gil-time">Time 500-750ms</div>
+                <div class="gil-holder thread-waiting">Thread 1 waiting ⏳</div>
+                <div class="gil-holder thread-waiting">Thread 2 waiting ⏳</div>
+                <div class="gil-holder thread-active">Thread 3 has GIL 🔒<br>Computing primes...</div>
+                <div class="gil-holder thread-waiting">Thread 4 waiting ⏳</div>
+            </div>
+            
+            <div class="gil-row">
+                <div class="gil-time">Time 750-1000ms</div>
+                <div class="gil-holder thread-waiting">Thread 1 waiting ⏳</div>
+                <div class="gil-holder thread-waiting">Thread 2 waiting ⏳</div>
+                <div class="gil-holder thread-waiting">Thread 3 waiting ⏳</div>
+                <div class="gil-holder thread-active">Thread 4 has GIL 🔒<br>Computing primes...</div>
+            </div>
+            
+            <div style="background: #ffe5e5; padding: 20px; border-radius: 8px; margin: 20px 0; border: 2px solid #e74c3c;">
+                <strong style="color: #e74c3c; font-size: 1.2em;">Result: Threads run SEQUENTIALLY, not in parallel!</strong>
+                <ul style="margin-top: 15px;">
+                    <li>Only 1 CPU core is used at a time</li>
+                    <li>Context switching adds overhead</li>
+                    <li>Can actually be SLOWER than sequential!</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- PROCESS EXPLANATION -->
+    <div class="section">
+        <h2>⚙️ Why Processes Work: Separate GILs</h2>
+        
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin: 30px 0;">
+            <div style="background: #d4edda; border: 3px solid #28a745; border-radius: 10px; padding: 20px; text-align: center;">
+                <strong style="font-size: 1.3em;">Process 1</strong><br><br>
+                <div style="background: #fff; padding: 15px; border-radius: 5px; margin: 10px 0;">
+                    🔒 Own GIL<br>
+                    🧮 Own Python Interpreter<br>
+                    💾 Own Memory Space
+                </div>
+                <div style="background: #28a745; color: white; padding: 10px; border-radius: 5px; margin-top: 10px;">
+                    CPU Core 1<br>
+                    100% utilized
+                </div>
+            </div>
+            
+            <div style="background: #d4edda; border: 3px solid #28a745; border-radius: 10px; padding: 20px; text-align: center;">
+                <strong style="font-size: 1.3em;">Process 2</strong><br><br>
+                <div style="background: #fff; padding: 15px; border-radius: 5px; margin: 10px 0;">
+                    🔒 Own GIL<br>
+                    🧮 Own Python Interpreter<br>
+                    💾 Own Memory Space
+                </div>
+                <div style="background: #28a745; color: white; padding: 10px; border-radius: 5px; margin-top: 10px;">
+                    CPU Core 2<br>
+                    100% utilized
+                </div>
+            </div>
+            
+            <div style="background: #d4edda; border: 3px solid #28a745; border-radius: 10px; padding: 20px; text-align: center;">
+                <strong style="font-size: 1.3em;">Process 3</strong><br><br>
+                <div style="background: #fff; padding: 15px; border-radius: 5px; margin: 10px 0;">
+                    🔒 Own GIL<br>
+                    🧮 Own Python Interpreter<br>
+                    💾 Own Memory Space
+                </div>
+                <div style="background: #28a745; color: white; padding: 10px; border-radius: 5px; margin-top: 10px;">
+                    CPU Core 3<br>
+                    100% utilized
+                </div>
+            </div>
+            
+            <div style="background: #d4edda; border: 3px solid #28a745; border-radius: 10px; padding: 20px; text-align: center;">
+                <strong style="font-size: 1.3em;">Process 4</strong><br><br>
+                <div style="background: #fff; padding: 15px; border-radius: 5px; margin: 10px 0;">
+                    🔒 Own GIL<br>
+                    🧮 Own Python Interpreter<br>
+                    💾 Own Memory Space
+                </div>
+                <div style="background: #28a745; color: white; padding: 10px; border-radius: 5px; margin-top: 10px;">
+                    CPU Core 4<br>
+                    100% utilized
+                </div>
+            </div>
+        </div>
+        
+        <div class="highlight">
+            <strong>🚀 Why This Works:</strong><br><br>
+            • Each process has its own Python interpreter<br>
+            • Each process has its own GIL (no sharing!)<br>
+            • Each process can run on a different CPU core<br>
+            • All 4 processes compute primes simultaneously<br>
+            • True parallelism achieved → 3.18x speedup!
+        </div>
+    </div>
+
+    <!-- COMPARISON TABLE -->
+    <div class="section">
+        <h2>📋 Complete Comparison</h2>
+        
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>Aspect</th>
+                    <th>Sequential</th>
+                    <th>ThreadPoolExecutor</th>
+                    <th>ProcessPoolExecutor</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Execution Time</strong></td>
+                    <td>4.77 seconds</td>
+                    <td style="background: #ffe5e5;">5.25 seconds (WORSE!)</td>
+                    <td style="background: #d4edda;">1.50 seconds (BEST!)</td>
+                </tr>
+                <tr>
+                    <td><strong>Speedup</strong></td>
+                    <td>1x (baseline)</td>
+                    <td style="color: #e74c3c;">0.91x (slower!)</td>
+                    <td style="color: #28a745;">3.18x faster!</td>
+                </tr>
+                <tr>
+                    <td><strong>CPU Cores Used</strong></td>
+                    <td>1 core</td>
+                    <td>1 core (GIL!)</td>
+                    <td>4 cores (parallel!)</td>
+                </tr>
+                <tr>
+                    <td><strong>GIL Impact</strong></td>
+                    <td>N/A</td>
+                    <td><span class="cross">✗</span> Forces sequential execution</td>
+                    <td><span class="check">✓</span> Each process has own GIL</td>
+                </tr>
+                <tr>
+                    <td><strong>True Parallelism</strong></td>
+                    <td><span class="cross">✗</span> No</td>
+                    <td><span class="cross">✗</span> No</td>
+                    <td><span class="check">✓</span> Yes</td>
+                </tr>
+                <tr>
+                    <td><strong>Memory Usage</strong></td>
+                    <td>Low</td>
+                    <td>Low (shared)</td>
+                    <td>High (4x copied)</td>
+                </tr>
+                <tr>
+                    <td><strong>Overhead</strong></td>
+                    <td>None</td>
+                    <td>Context switching</td>
+                    <td>Process creation + IPC</td>
+                </tr>
+                <tr>
+                    <td><strong>Best For</strong></td>
+                    <td>Simple scripts</td>
+                    <td>I/O-bound work</td>
+                    <td>CPU-bound work</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- WHEN TO USE -->
+    <div class="section">
+        <h2>🎯 Decision Guide</h2>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+            <div style="background: #e8f8f5; padding: 25px; border-radius: 10px; border: 3px solid #27ae60;">
+                <h3 style="margin-top: 0; color: #27ae60;">✅ Use Threads When:</h3>
+                <ul style="font-size: 1.05em;">
+                    <li><strong>I/O-bound work</strong></li>
+                    <li>Network requests (requests library)</li>
+                    <li>File I/O operations</li>
+                    <li>Database queries</li>
+                    <li>Waiting for external services</li>
+                </ul>
+                <div class="code-block">
+<span class="keyword">def</span> <span class="function">fetch_url</span>(url):
+    <span class="comment"># Waiting for network - thread yields</span>
+    response = requests.get(url)
+    <span class="keyword">return</span> response.text
+
+<span class="keyword">with</span> ThreadPoolExecutor() <span class="keyword">as</span> exe:
+    <span class="comment"># Good! Threads wait for I/O</span>
+    futures = [exe.submit(fetch_url, u) 
+               <span class="keyword">for</span> u <span class="keyword">in</span> urls]
+                </div>
+            </div>
+            
+            <div style="background: #fef5e7; padding: 25px; border-radius: 10px; border: 3px solid #f39c12;">
+                <h3 style="margin-top: 0; color: #f39c12;">✅ Use Processes When:</h3>
+                <ul style="font-size: 1.05em;">
+                    <li><strong>CPU-bound work</strong></li>
+                    <li>Mathematical computations</li>
+                    <li>Image/video processing</li>
+                    <li>Data transformations</li>
+                    <li>ML model inference</li>
+                </ul>
+                <div class="code-block">
+<span class="keyword">def</span> <span class="function">process_image</span>(img_path):
+    <span class="comment"># Heavy computation - needs CPU</span>
+    img = load_image(img_path)
+    <span class="keyword">return</span> apply_filters(img)
+
+<span class="keyword">with</span> ProcessPoolExecutor() <span class="keyword">as</span> exe:
+    <span class="comment"># Good! Bypasses GIL</span>
+    futures = [exe.submit(process_image, p) 
+               <span class="keyword">for</span> p <span class="keyword">in</span> paths]
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FINAL SUMMARY -->
+    <div class="section">
+        <h2>💡 Key Takeaways</h2>
+        
+        <div class="highlight">
+            <strong>The Golden Rules:</strong><br><br>
+            <ol style="font-size: 1.1em; line-height: 1.8;">
+                <li><strong>CPU-Bound Work:</strong> Use <code>ProcessPoolExecutor</code> to bypass the GIL and achieve true parallelism</li>
+                <li><strong>I/O-Bound Work:</strong> Use <code>ThreadPoolExecutor</code> or <code>asyncio</code> - threads work because they yield during I/O</li>
+                <li><strong>Simple Tasks:</strong> Don't overcomplicate - sequential code is fine for many use cases</li>
+                <li><strong>The GIL:</strong> Is the reason threads don't help with CPU work in Python</li>
+                <li><strong>Processes:</strong> Bypass the GIL but have higher overhead (memory + IPC)</li>
+            </ol>
+        </div>
+        
+        <div style="background: #e8f8f5; padding: 25px; border-radius: 10px; margin-top: 30px; border: 3px solid #3498db;">
+            <h3 style="margin-top: 0; color: #2c3e50;">🎓 Interview-Ready Knowledge</h3>
+            <p style="font-size: 1.1em;"><strong>Q: "Why don't threads help with CPU-bound work in Python?"</strong></p>
+            <p style="font-size: 1.05em;">
+                <strong>A:</strong> "Because of the GIL (Global Interpreter Lock), which ensures only one thread executes Python bytecode at a time. Even on a multi-core CPU, threads run sequentially for CPU-bound tasks. For true parallelism, we need to use ProcessPoolExecutor, where each process has its own Python interpreter and GIL, allowing them to run on separate CPU cores simultaneously."
+            </p>
+        </div>
+    </div>
+
+</body>
+</html>
